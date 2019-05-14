@@ -1,13 +1,17 @@
 ---
 title: "Are Public Demonstrations a Driving Force for Politics?"
 author: "Shengpei Wang"
-date: "May 6, 2019"
+date: "May 14, 2019"
 output: github_document
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = F, message = FALSE, warning = FALSE)
 ```
+```{r load_data}
+load("figures_and_data_for_markdown.RData")
+```
+
 # Is protesting useful?
 
 Public demonstrations have a long history of driving political changes around the globe, such as the Civil Rights Movement in the US, the Indian Independence Movement in India, and The Defiance Campaign in South Africa. The effects of demonstrations have been studied in detail in some specific cases, such as the Tea Party movement in the US (Madestam *et. al* 2011). However, whether demonstrations are generally effective as a political force is still unclear. 
@@ -52,24 +56,6 @@ Both datasets are publicly available on their websites:
 *  REIGN: https://oefresearch.org/datasets/reign
 *  MMAD: https://mmadatabase.org/
 
-```{r data_import, echo=FALSE}
-# Prep the working envi.
-library(tidyverse)
-
-# Bringing in the data
-# The Rulers, Elections, and Irregular Governance Dataset
-dat_REIGN = read_csv("data/REIGN_2019_4.csv") 
-#summary(dat_REIGN$year)
-#length(unique(dat_REIGN$ccode))
-# Data on 201 countries from 1950 to now
-
-# Mass mobilization record in autocracies 2002-2015
-dat_MMAD = read_csv("data/events_Mass_Mobilization_in_Autocracies_Database.csv")
-# 76 countries
-
-# Country code from The correlates of war project
-dat_COW = read_csv("data/COW country codes.csv") 
-```
 The REIGN dataset. I downloaded the most recent full dataset from their archive.
 
 This is a fairly complicated dataset, and I will be focusing on only some of the variables for the preliminary exploration. Each row records the leader and political environment of a single month in each country.
@@ -81,8 +67,8 @@ This is a fairly complicated dataset, and I will be focusing on only some of the
 * "tenure_months" is the length of the tenure of the leader for the month of record
 * "government" is the type of political regime of the country at the month of record.
 
-```{r data_description_REIGN, echo = FALSE}
-head(dat_REIGN %>% select(ccode, country, leader, elected, tenure_months, government))
+```{r data_description_REIGN}
+data_REIGN_sample
 ```
 
 Look at the MMAD dataset. I obtained the data describing the incidents of each recorded event.
@@ -93,9 +79,60 @@ Look at the MMAD dataset. I obtained the data describing the incidents of each r
 * "side" represents whether the demonstration is pro-regime (0), anti-regime (1) or domestic public/non-government (3). Domestic demonstrations are rare and does not affect my questions, so I will removed them for my analyses.
 * "mean_avg_numparticipants" represent the best estimate of the size of the demonstrations.
 
-```{r data_description_NNAD, echo = FALSE}
-head(dat_MMAD %>% select(cowcode, asciiname, event_date, side, mean_avg_numparticipants))
+```{r data_description_NNAD}
+data_MMAD_sample
 ```
+
+# Popularity of mass demonstrations
+## Demonstrations are in the news all the time, but how common are they across the world?
+
+I examined the prevalence of demonstrations by tallying the number of months when demonstrations did or did not happen for each country during 2003-2015. I further sectioned the data by the type of regime, because it could be a major driving factor for whether people decide to participate in public demonstrations. 
+
+```{r fig1}
+plot_freq_dem
+```
+
+Demonstrations were much more frequent in all of the autocracies than the two democratic regimes. This shows that people chose to use demonstration as a political tool more often in autocracies. 
+
+But were people actually happier with their government in democratic systems than autocratic systems? This pattern could be driven by more pro-regime demonstrations in autocratic systems. I further explored the prevalence of demonstrations that were pro-regime vs anti-regime across different regimes.
+
+```{r fig2}
+plot_prop_dem
+```
+
+Most demonstrations turn out to be anti-regime regardless of the types of regimes. Additionally, pro-regime demonstrations tended to happen concurrently with anti-regime demonstrations. This makes sense that there is no political need to express one's support for a regime unless it is challenged. 
+
+## Do patterns of demonstration depend on the legitimacy of a leader?
+
+The previous section shows that people were happier with democratic regimes. Was this driven by the fact that the leaders were elected? I investigated this question by looking at both numbers and sizes of demonstrations with legitimate vs illegitimate leaders. I quantified the legitimacy of leaders as whether they were elected to office.
+
+```{r fig3}
+plot_anti_election
+```
+
+There were more anti-regime demonstrations when a leader was not elected to office. Demonstrations against illegitimate leaders were also better attended. Even though the majority of demonstrations are anti-regime, the legitimacy of the leaders did matter. Does the same pattern hold for pro-regime demonstrations?
+
+```{r fig4, fig.width = 8}
+plot_pro_election
+```
+
+Concordant with the previous findings, illegitimate leaders were less supported by pro-regime demonstrations, which were also less popular compared to with legitimate leaders. These results demonstrate that greater prevalence of demonstrations in autocratic systems was indeed partially correlated with the legitimacy of the leaders. 
+
+One interesting outlier was the party-personal regime, where there were more pro-regime demonstrations than all other regimes and that illegitimate leaders enjoyed greater support through demonstrations. I explored this pattern further by look into each country separately.
+
+```{r fig5}
+plot_cuba_nkorea
+```
+
+## Do demonstrations drive regime change or happen in response to regime change?
+
+In the previous sections, I found that demonstration was a popular political tool to protest against illegitimate leaders or autocratic regimes. But were demonstrations effective at driving political changes? One way to answer this question is to look at the timing of events, did demonstrations happen before or after a leader took office. 
+```{r fig6, fig.width = 8}
+plot_dem_dots
+```
+
+Each point in the figure above represents one public demonstration. Even though the prevalence of demonstration differed amongst regime types, more demonstrations tended to happen later in a leader's tenure, thus before rather than after leadership changes.   
+
 ## Bibliography
 Madestam, A., Shoag, D., Veuger, S. and Yanagizawa-Drott, D., 2013. Do political protests matter? evidence from the tea party movement. The Quarterly Journal of Economics, 128(4), pp.1633-1685.
 
