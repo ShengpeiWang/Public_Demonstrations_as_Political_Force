@@ -180,17 +180,56 @@ months when demonstrations did or did not happen for each country during
 it could be a major driving factor for whether people decide to
 participate in public demonstrations.
 
+Which countries had proportionally the most months with demonstrations?
+
+``` r
+head(data_REIGN_0315_wide %>% 
+  arrange(prop_non) %>% 
+  ungroup() %>% 
+  select(country, government, n_month_pro = pro, n_month_anti = anti, n_month_non = non, proportion_non = prop_non))
+```
+
+    ## # A tibble: 6 x 6
+    ##   country  government   n_month_pro n_month_anti n_month_non proportion_non
+    ##   <chr>    <fct>              <int>        <int>       <int>          <dbl>
+    ## 1 Nepal    Monarchy               6           42           1         0.0233
+    ## 2 China    Dominant Pa~          22          154           4         0.0253
+    ## 3 Iran     Dominant Pa~          60          139          17         0.108 
+    ## 4 Pakistan Military-Pe~          12           59           9         0.132 
+    ## 5 Haiti    Personal Di~          10           12           2         0.143 
+    ## 6 Egypt    Party-Perso~          12           81          17         0.173
+
+I notice that all of the top six countries with the most months with
+demonstrations are under some sort of autocratic rule. Is this pattern
+broadly true?
+
 ![](README_files/figure-gfm/fig1-1.png)<!-- -->
 
-Demonstrations were much more frequent in all of the autocracies than
-the two democratic regimes. This shows that people chose to use
-demonstration as a political tool more often in autocracies.
+Generally, demonstrations were much more frequent in all of the
+autocracies than the two democratic regimes. This shows that people
+chose to use demonstration as a political tool more often in
+autocracies.
 
-But were people actually happier with their government in democratic
-systems than autocratic systems? This pattern could be driven by more
-pro-regime demonstrations in autocratic systems. I further explored the
-prevalence of demonstrations that were pro-regime vs anti-regime across
-different regimes.
+I used an ANOVA to test whether there were more demonstrations in
+different regimes:
+
+``` r
+summary(fit_pro_non_month)
+```
+
+    ##              Df Sum Sq Mean Sq F value Pr(>F)   
+    ## government   13   28.9  2.2234   2.634 0.0033 **
+    ## Residuals   102   86.1  0.8441                  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 2 observations deleted due to missingness
+
+The effect of different regime is very significant, but were people
+actually happier with their government in democratic systems than
+autocratic systems? This pattern could be driven by more pro-regime
+demonstrations in autocratic systems. I further explored the prevalence
+of demonstrations that were pro-regime vs anti-regime across different
+regimes.
 
 ![](README_files/figure-gfm/fig2-1.png)<!-- -->
 
@@ -224,6 +263,57 @@ compared to with legitimate leaders. These results demonstrate that
 greater prevalence of demonstrations in autocratic systems was indeed
 partially correlated with the legitimacy of the leaders.
 
+I formally tested factors contributing to the size of demonstration
+using a linear mixed model.
+
+``` r
+summary(summary(fit_size_elected_raw))
+```
+
+    ## Linear mixed model fit by REML ['lmerMod']
+    ## Formula: mean_avg_numparticipants ~ elected * dem_type + government +  
+    ##     (1 | country)
+    ##    Data: data_MMAD_REIGN
+    ## 
+    ## REML criterion at convergence: 295614.2
+    ## 
+    ## Scaled residuals: 
+    ##    Min     1Q Median     3Q    Max 
+    ## -0.972 -0.108 -0.025  0.022 42.128 
+    ## 
+    ## Random effects:
+    ##  Groups   Name        Variance  Std.Dev.
+    ##  country  (Intercept) 9.357e+07  9673   
+    ##  Residual             4.873e+09 69810   
+    ## Number of obs: 11767, groups:  country, 75
+    ## 
+    ## Fixed effects:
+    ##                                          Estimate Std. Error t value
+    ## (Intercept)                               31717.7     5871.5   5.402
+    ## electednot elected                       -21565.2     5588.6  -3.859
+    ## dem_typeAnti-regime                      -29601.4     2338.2 -12.660
+    ## governmentParliamentary Democracy          5643.7     8167.6   0.691
+    ## governmentDominant Party                   6147.6     6769.3   0.908
+    ## governmentForeign/Occupied                -1884.1     9439.5  -0.200
+    ## governmentMilitary                         2712.1     8437.1   0.321
+    ## governmentMilitary-Personal                -865.4     7707.5  -0.112
+    ## governmentPersonal Dictatorship             674.3     6019.1   0.112
+    ## governmentParty-Personal                  22688.9     8939.9   2.538
+    ## governmentMonarchy                        -1317.7     7640.0  -0.172
+    ## governmentParty-Military                   2046.7     9762.4   0.210
+    ## governmentParty-Personal-Military Hybrid   6165.6     6598.5   0.934
+    ## governmentProvisional - Civilian           -266.2     9571.0  -0.028
+    ## governmentProvisional - Military           9356.3     8221.2   1.138
+    ## governmentWarlordism                      -3570.1    13401.5  -0.266
+    ## electednot elected:dem_typeAnti-regime    24041.6     5245.8   4.583
+
+The model confirms the previous findings that less people attend
+pro\_regime demonstrations under illegitimate leaders (negative
+coefficient for elected), and that the pattern is reversed for
+anti-regime demonstrations (negative coefficent for dem\_type but
+positive interaction term). Using model comparison, these effects are
+highly significant (Chi-sq = 161.02, df = 3, p \< 2.2e-16).
+
 One interesting outlier was the party-personal regime, where there were
 more pro-regime demonstrations than all other regimes and that
 illegitimate leaders enjoyed greater support through demonstrations. I
@@ -245,6 +335,45 @@ Each point in the figure above represents one public demonstration. Even
 though the prevalence of demonstration differed amongst regime types,
 more demonstrations tended to happen later in a leader’s tenure, thus
 before rather than after leadership changes.
+
+## Predicative modeling
+
+The historical patterns discovered above will inform the predicative
+modeling. In the previous section, the results show that the regime
+types and time during a leader’s tenure really matter for when
+demonstrations happen. I will use this information to start exploring
+simple predicative models.
+
+I first explored whether having all of the above information gives a
+good predicative model:
+
+``` r
+fit_before_or_after_all = 
+  glm(dem_n ~ dem_type + time_before_after + time_from_leader_abs + time_of_tenure +
+      government + country, 
+      family = quasipoisson(link = "log"), data = data_REIGN_0315_analysis)
+calc_r_squared_glm(fit_before_or_after_all)
+```
+
+    ## [1] 0.8326806
+
+The r-squared is very high (83.3%).
+
+However, I want this model to be less specific. Since the dataset
+doesn’t contain all countries, and I would like the model to be useful
+for countries not in the dataset as well. How will model performace
+change if I remove country as a predictative factor.
+
+``` r
+fit_before_or_after_all_reduced = 
+  glm(dem_n ~ dem_type + time_before_after + time_from_leader_abs + government, 
+      family = quasipoisson(link = "log"), data = data_REIGN_0315_analysis)
+calc_r_squared_glm(fit_before_or_after_all_reduced)
+```
+
+    ## [1] 0.755249
+
+This is still a pretty good model (r-sq = 75.5%)
 
 ## Bibliography
 

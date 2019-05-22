@@ -54,6 +54,10 @@ data_REIGN_0315 =
          dem_type = factor(dem_type, levels = c("no demonstration","Pro-regime","Anti-regime")))%>% 
   ungroup()
 
+data_REIGN_0315_MMAD <- 
+  data_REIGN_0315 %>% 
+  semi_join(data_MMAD %>% select("ccode"))
+
 plot_dem_dots = 
   ggplot(data = data_REIGN_0315 %>% filter(!is.na(side)),
          aes(government, time_of_tenure, color = dem_type))+
@@ -80,7 +84,8 @@ data_REIGN_0315_wide =
   rename(pro = `0`, anti = `1`, non = `<NA>`) %>% 
   left_join(data_total_months) %>% 
   mutate(both_pro_anti = sum(c(pro, anti, non), na.rm = T) - total) %>% 
-  mutate(pro_only = pro - both_pro_anti, anti_only = anti - both_pro_anti)
+  mutate(pro_only = pro - both_pro_anti, anti_only = anti - both_pro_anti) %>% 
+  mutate(prop_non = non/total)
 
 data_summary_gov  =
   data_REIGN_0315_wide%>% 
@@ -277,4 +282,6 @@ ggsave("figures/bigger_anti_for_illegitimate.png",
 save(data_REIGN_sample, data_MMAD_sample, 
      plot_dem_dots, plot_freq_dem, plot_prop_dem,
      plot_cuba_nkorea, plot_pro_election, plot_anti_election,
+     data_REIGN_0315_wide, fit_pro_non_month, fit_size_elected_raw,
+     fit_before_or_after_all, fit_before_or_after_all_reduced,
      file = "figures_and_data_for_markdown.RData")

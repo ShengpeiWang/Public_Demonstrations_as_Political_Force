@@ -10,6 +10,11 @@ knitr::opts_chunk$set(echo = F, message = FALSE, warning = FALSE)
 ```
 ```{r load_data}
 load("figures_and_data_for_markdown.RData")
+library(tidyverse)
+calc_r_squared_glm = function(model){
+  r_sq = 1 - model$deviance/model$null.deviance
+  return(r_sq)
+}
 ```
 
 # Is protesting useful?
@@ -86,15 +91,30 @@ data_MMAD_sample
 # Popularity of mass demonstrations
 ## Demonstrations are in the news all the time, but how common are they across the world?
 
-I examined the prevalence of demonstrations by tallying the number of months when demonstrations did or did not happen for each country during 2003-2015. I further sectioned the data by the type of regime, because it could be a major driving factor for whether people decide to participate in public demonstrations. 
+I examined the prevalence of demonstrations by tallying the number of months when demonstrations did or did not happen for each country during 2003-2015. I further sectioned the data by the type of regime, because it could be a major driving factor for whether people decide to participate in public demonstrations.
+
+Which countries had proportionally the most months with demonstrations?
+```{r countries_exp, echo = TRUE}
+head(data_REIGN_0315_wide %>% 
+  arrange(prop_non) %>% 
+  ungroup() %>% 
+  select(country, government, n_month_pro = pro, n_month_anti = anti, n_month_non = non, proportion_non = prop_non))
+```
+
+I notice that all of the top six countries with the most months with demonstrations are under some sort of autocratic rule. Is this pattern broadly true?
 
 ```{r fig1}
 plot_freq_dem
 ```
 
-Demonstrations were much more frequent in all of the autocracies than the two democratic regimes. This shows that people chose to use demonstration as a political tool more often in autocracies. 
+Generally, demonstrations were much more frequent in all of the autocracies than the two democratic regimes. This shows that people chose to use demonstration as a political tool more often in autocracies. 
 
-But were people actually happier with their government in democratic systems than autocratic systems? This pattern could be driven by more pro-regime demonstrations in autocratic systems. I further explored the prevalence of demonstrations that were pro-regime vs anti-regime across different regimes.
+I used an ANOVA to test whether there were more demonstrations in different regimes:
+```{r ANOVA_regime, echo = TRUE}
+summary(fit_pro_non_month)
+```
+
+The effect of different regime is very significant, but were people actually happier with their government in democratic systems than autocratic systems? This pattern could be driven by more pro-regime demonstrations in autocratic systems. I further explored the prevalence of demonstrations that were pro-regime vs anti-regime across different regimes.
 
 ```{r fig2}
 plot_prop_dem
@@ -118,6 +138,14 @@ plot_pro_election
 
 Concordant with the previous findings, illegitimate leaders were less supported by pro-regime demonstrations, which were also less popular compared to with legitimate leaders. These results demonstrate that greater prevalence of demonstrations in autocratic systems was indeed partially correlated with the legitimacy of the leaders. 
 
+I formally tested factors contributing to the size of demonstration using a linear mixed model.
+
+```{r lm_size_elected, echo=TRUE}
+summary(summary(fit_size_elected_raw))
+```
+
+The model confirms the previous findings that less people attend pro_regime demonstrations under illegitimate leaders (negative coefficient for elected), and that the pattern is reversed for anti-regime demonstrations (negative coefficent for dem_type but positive interaction term). Using model comparison, these effects are highly significant (Chi-sq = 161.02, df = 3, p < 2.2e-16).
+
 One interesting outlier was the party-personal regime, where there were more pro-regime demonstrations than all other regimes and that illegitimate leaders enjoyed greater support through demonstrations. I explored this pattern further by look into each country separately.
 
 ```{r fig5}
@@ -132,6 +160,37 @@ plot_dem_dots
 ```
 
 Each point in the figure above represents one public demonstration. Even though the prevalence of demonstration differed amongst regime types, more demonstrations tended to happen later in a leader's tenure, thus before rather than after leadership changes.   
+
+## Predicative modeling
+The historical patterns discovered above will inform the predicative modeling. In the previous section, the results show that the regime types and time during a leader's tenure really matter for when demonstrations happen. I will use this information to start exploring simple predicative models. 
+
+I first explored whether having all of the above information gives a good predicative model:
+
+```{r full_model, eval=FALSE, echo = TRUE}
+fit_before_or_after_all = 
+  glm(dem_n ~ dem_type + time_before_after + time_from_leader_abs + time_of_tenure +
+      government + country, 
+      family = quasipoisson(link = "log"), data = data_REIGN_0315_analysis)
+calc_r_squared_glm(fit_before_or_after_all)
+```
+```{r r_sq}
+calc_r_squared_glm(fit_before_or_after_all)
+```
+
+The r-squared is very high (83.3%). 
+
+However, I want this model to be less specific. Since the dataset doesn't contain all countries, and I would like the model to be useful for countries not in the dataset as well. How will model performace change if I remove country as a predictative factor.
+```{r reduced_model, eval=FALSE, echo = TRUE}
+fit_before_or_after_all_reduced = 
+  glm(dem_n ~ dem_type + time_before_after + time_from_leader_abs + government, 
+      family = quasipoisson(link = "log"), data = data_REIGN_0315_analysis)
+calc_r_squared_glm(fit_before_or_after_all_reduced)
+```
+```{r r_sq_reduced}
+calc_r_squared_glm(fit_before_or_after_all_reduced)
+```
+
+This is still a pretty good model (r-sq = 75.5%)
 
 ## Bibliography
 Madestam, A., Shoag, D., Veuger, S. and Yanagizawa-Drott, D., 2013. Do political protests matter? evidence from the tea party movement. The Quarterly Journal of Economics, 128(4), pp.1633-1685.
